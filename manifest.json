@@ -1,0 +1,24 @@
+{
+  "manifest_version": 2,
+  "name": "Datadog Guide",
+  "version": "0.1",
+  "browser_action": {
+    "default_icon": "icon.png"
+  },
+  "permissions": [
+    "activeTab",
+    "storage",
+    "tabs",
+    "*://*datadoghq.com/*"
+  ],
+  "content_scripts": [
+    {
+      "matches": ["*://app.datadoghq.com/*"],
+      "run_at": "document_start",
+      "js": [
+        "inject.js"
+      ]
+    }
+  ],
+  "web_accessible_resources": ["injected.js"]
+}
