@@ -2,7 +2,10 @@
 
 ## Get started
 
-TODO:
+1. Clone this repository locally
+1. Navigate to [chrome://extensions/](chrome://extensions/)
+1. Enable developer mode
+1. Select "Load unpacked" and select the extension repository
 
 ## Customize
 

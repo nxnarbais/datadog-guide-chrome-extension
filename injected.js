@@ -30,6 +30,47 @@ const libs_monitors_detailedAnalytics = {
             }
         }
         return false;
+    },
+    isMonitorUsingRecommendedEvaluationDelay: (metrics, evaluationDelay) => {
+        let isEvaluationDelayRequired = false;
+        for (let i = 0, l = metrics.length; i < l; i++) {
+            const m = metrics[i];
+            if (isEvaluationDelayRequired === true) {
+                continue;
+            }
+            if (m.startsWith('aws.')) {
+                isEvaluationDelayRequired = true;
+                continue;
+            }
+            if (m.startsWith('azure.')) {
+                isEvaluationDelayRequired = true;
+                continue;
+            }
+            if (m.startsWith('gcp.')) {
+                isEvaluationDelayRequired = true;
+                continue;
+            }
+        }
+        if (!isEvaluationDelayRequired) {
+            return true;
+        }
+        if (evaluationDelay && evaluationDelay >= 900) {
+            return true;
+        }
+        return false;
+    },
+    isMonitorNotTriggeredRecently: (latestStateModified) => {
+        if (!latestStateModified) {
+            return false;
+        }
+        const latestStateModifiedDate = Date.parse(latestStateModified);
+        const thresholdDate = new Date();
+        const DAYS_TO_REMOVE = 90;
+        thresholdDate.setDate(thresholdDate.getDate() - DAYS_TO_REMOVE);
+        if (thresholdDate < latestStateModifiedDate) {
+            return true;
+        }
+        return false;
     }
 }
 
@@ -41,6 +82,10 @@ const libs_monitors_analytics = (monitorJSON) => {
             .isMonitorTaggedWithKey("owner", monitorJSON.tags),
         isMonitorTaggedWithKeyEnv: libs_monitors_detailedAnalytics
             .isMonitorTaggedWithKey("env", monitorJSON.tags),
+        isMonitorUsingRecommendedEvaluationDelay: libs_monitors_detailedAnalytics
+            .isMonitorUsingRecommendedEvaluationDelay(monitorJSON.params.metrics, monitorJSON.evaluation_delay),
+        isMonitorNotTriggeredRecently: libs_monitors_detailedAnalytics
+            .isMonitorNotTriggeredRecently(monitorJSON.overall_state_modified)
     }
 }
 
@@ -95,6 +140,12 @@ const libs_monitors_analyze = (monitorJSON) => {
     if (!analytics.isMonitorTaggedWithKeyOwner || !analytics.isMonitorTaggedWithKeyEnv) {
         messageContent += "<li>Tags env and owner are mandatory. One of them is missing.</li>";
     }
+    if (!analytics.isMonitorUsingRecommendedEvaluationDelay) {
+        messageContent += "<li>Cloud metrics require a 15min (900sec) evaluation delay.</li>";
+    }
+    if (!analytics.isMonitorNotTriggeredRecently) {
+        messageContent += "<li>This monitor has not triggered in a while, is it still well configured?</li>";
+    }
     if (messageContent !== "") {
         libs_monitors_displayMessage(messageContent);
     }
@@ -134,7 +185,7 @@ const libs_monitors_analyze = (monitorJSON) => {
 
         var myUrl = this._url ? this._url.toLowerCase() : this._url;
 
-        if(myUrl && (myUrl.startsWith("/monitor/search") || myUrl.startsWith("/api/v"))) {
+        if(false && myUrl && (myUrl.startsWith("/monitor/search") || myUrl.startsWith("/api/v"))) {
 
             if (postData) {
                 if (typeof postData === 'string') {
@@ -193,6 +244,7 @@ const libs_monitors_analyze = (monitorJSON) => {
                 try {
                     var responseBody = this.responseText;
                     monitorJSON = JSON.parse(responseBody);
+                    console.log(monitorJSON)
                     libs_monitors_analyze(monitorJSON);
                 } catch(err) {
                     console.log("Error in responseType try catch");
