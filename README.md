@@ -1,5 +1,9 @@
 # Datadog Guide
 
+## Concept
+
+The idea behind this project is to intercept some objects coming from Datadog and display custom recommendations to improve the quality of monitors, dashboards, etc. based on Company's policies and rules. 
+
 ## Get started
 
 1. Clone this repository locally
