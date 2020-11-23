@@ -1,3 +1,96 @@
+const libs_synthetics_urlMatcher = {
+    isURLFetchingSyntheticContent: (url) => {
+        if (!url.startsWith("/api/v0/synthetics/tests")) {
+            return false;
+        }
+        const mainPath = url.split("?")[0];
+        const splittedPath = mainPath.split("/");
+        // console.log("isURLFetchingSyntheticContent", { url, mainPath, splittedPath });
+        if (splittedPath.length !== 6) {
+            return false;
+        }
+        return true;
+    }
+}
+
+const libs_synthetics_detailedAnalytics = {
+    isMonitorTaggedWithKey: (key, tags) => {
+        for (let i = 0, tagsLength = tags.length; i < tagsLength; i++) {
+            const tag = tags[i];
+            const tagKey = tag.split(":")[0];
+            if (tagKey === key) {
+                return true;
+            }
+        }
+        return false;
+    },
+}
+
+const libs_synthetics_analytics = (monitorJSON) => {
+    return {
+        isMonitorTaggedWithKeyOwner: libs_monitors_detailedAnalytics
+            .isMonitorTaggedWithKey("owner", monitorJSON.tags),
+        isMonitorTaggedWithKeyEnv: libs_monitors_detailedAnalytics
+            .isMonitorTaggedWithKey("env", monitorJSON.tags),
+    }
+}
+
+const libs_synthetics_displayMessage = (message) => {
+    const recommendationDOM = document.getElementById("recommendation");
+
+    if (recommendationDOM === null) {
+        const blockDOM = document.createElement('div');
+        blockDOM.id = "recommendation";
+        blockDOM.className = "synthetics_ui_accordion-block";
+        const subBlockDOM = document.createElement('div');
+        subBlockDOM.className = "ui_layout_panel ui_layout_panel--default ui_layout_panel--shadow-level-0";
+        blockDOM.appendChild(subBlockDOM);
+
+        const topSectionDOM = document.createElement('section');
+        topSectionDOM.className = "ui_layout_accordion-skeleton ui_layout_accordion-skeleton--xl ui_layout_accordion ui_layout_accordion--xl";
+        subBlockDOM.appendChild(topSectionDOM);
+
+        const headerDOM = document.createElement('header');
+        headerDOM.className = "ui_typography_text ui_typography_text--xl ui_typography_text--default ui_typography_text--normal ui_typography_text--left ui_typography_title ui_layout_accordion-skeleton__header ui_layout_accordion-skeleton__header--is-closed ui_layout_accordion__header";
+        topSectionDOM.appendChild(headerDOM);
+        const spanTitleDOM = document.createElement('span');
+        spanTitleDOM.className = "ui_layout_accordion-skeleton__header__title";
+        spanTitleDOM.innerHTML = '<svg class="ui_icons_icon ui_icons_icon--xl ui_layout_accordion-skeleton__header__icon ui_layout_accordion__header__icon" aria-hidden="true"><use xlink:href="#ui_icons_angle-right--sprite" fill=""></use></svg>';
+        spanTitleDOM.innerHTML += "Company Recommendations"
+        headerDOM.appendChild(spanTitleDOM);
+
+        const recoBody1DOM = document.createElement('div');
+        recoBody1DOM.className = "ui_layout_accordion-skeleton__body";
+        topSectionDOM.appendChild(recoBody1DOM);
+        const recoBody2DOM = document.createElement('div');
+        recoBody2DOM.className = "ui_layout_panel ui_layout_panel--default ui_layout_panel--shadow-level-0 ui_layout_panel--is-borderless ui_padding--top-md ui_padding--bottom-md ui_padding--left-md ui_padding--right-md";
+        recoBody1DOM.appendChild(recoBody2DOM);
+        const recoBody3DOM = document.createElement('div');
+        recoBody3DOM.className = "PropertiesSection-body";
+        recoBody2DOM.appendChild(recoBody3DOM);
+        const contentDOM = document.createElement('ul');
+        contentDOM.innerHTML = message;
+        recoBody3DOM.appendChild(contentDOM);
+
+        const monitorStatusBodyDOM = document.getElementsByClassName("ui_margin--top-md ui_margin--bottom-md ui_margin--left-md ui_margin--right-md")[0];
+        if (monitorStatusBodyDOM) {
+            monitorStatusBodyDOM.prepend(blockDOM);
+        }
+    }
+}
+
+const libs_synthetics_analyze = (syntheticJSON) => {
+    const analytics = libs_synthetics_analytics(syntheticJSON);
+    messageContent = "";
+    if (!analytics.isMonitorTaggedWithKeyOwner || !analytics.isMonitorTaggedWithKeyEnv) {
+        messageContent += "<li>Tags env and owner are mandatory. One of them is missing.</li>";
+    }
+    if (messageContent !== "") {
+        libs_synthetics_displayMessage(messageContent);
+    }
+
+}
+
 const libs_monitors_urlMatcher = {
     isURLFetchingMonitorContent: (url) => {
         if (!url.startsWith("/api/v1/monitor/")) {
@@ -123,7 +216,9 @@ const libs_monitors_displayMessage = (message) => {
         recoBody3DOM.appendChild(contentDOM);
 
         const monitorStatusBodyDOM = document.getElementsByClassName("MonitorStatus-body")[0];
-        monitorStatusBodyDOM.prepend(blockDOM);
+        if (monitorStatusBodyDOM) {
+            monitorStatusBodyDOM.prepend(blockDOM);
+        }
     }
 }
 
@@ -141,7 +236,7 @@ const libs_monitors_analyze = (monitorJSON) => {
         messageContent += "<li>Tags env and owner are mandatory. One of them is missing.</li>";
     }
     if (!analytics.isMonitorUsingRecommendedEvaluationDelay) {
-        messageContent += "<li>Cloud metrics require a 15min (900sec) evaluation delay.</li>";
+        messageContent += "<li>Cloud metrics require a 15min (900sec) evaluation delay.[documentation](https://docs.datadoghq.com/integrations/faq/cloud-metric-delay/)</li>";
     }
     if (!analytics.isMonitorNotTriggeredRecently) {
         messageContent += "<li>This monitor has not triggered in a while, is it still well configured?</li>";
@@ -185,7 +280,9 @@ const libs_monitors_analyze = (monitorJSON) => {
 
         var myUrl = this._url ? this._url.toLowerCase() : this._url;
 
-        if(false && myUrl && (myUrl.startsWith("/monitor/search") || myUrl.startsWith("/api/v"))) {
+        // if(myUrl) {
+        // if(myUrl && (myUrl.startsWith("/monitor/search") || myUrl.startsWith("/api/v"))) {
+        if (false) {
 
             if (postData) {
                 if (typeof postData === 'string') {
@@ -244,7 +341,7 @@ const libs_monitors_analyze = (monitorJSON) => {
                 try {
                     var responseBody = this.responseText;
                     monitorJSON = JSON.parse(responseBody);
-                    console.log(monitorJSON)
+                    // console.log(monitorJSON)
                     libs_monitors_analyze(monitorJSON);
                 } catch(err) {
                     console.log("Error in responseType try catch");
@@ -253,6 +350,24 @@ const libs_monitors_analyze = (monitorJSON) => {
             }
 
             console.log("### END Monitor Analytics");
+        }
+
+        if (myUrl && libs_synthetics_urlMatcher.isURLFetchingSyntheticContent(myUrl)) {
+            console.log("### START Synthetic Analytics");
+
+            if ( this.responseType != 'blob' && this.responseText) {
+                try {
+                    var responseBody = this.responseText;
+                    syntheticJSON = JSON.parse(responseBody);
+                    // console.log(syntheticJSON)
+                    libs_synthetics_analyze(syntheticJSON);
+                } catch(err) {
+                    console.log("Error in responseType try catch");
+                    console.log(err);
+                }
+            }
+
+            console.log("### END Synthetic Analytics");
         }
     });
 
